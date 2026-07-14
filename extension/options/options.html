@@ -9,18 +9,32 @@
   <main>
     <h1>Lead Assist settings</h1>
     <p class="muted">
-      These settings sync with your Chrome profile. The API key is only sent as
-      a <code>Authorization: Bearer</code> header to the base URL below.
+      These settings sync with your Chrome profile. The identity token is sent
+      as the <code>X-Conversion-Identity-Token</code> header (a Passport token
+      from the ConversionIA Identity Server) to the base URL below.
     </p>
 
     <label for="api-base-url">API base URL</label>
-    <input id="api-base-url" type="url" placeholder="https://api.example.com/v1" />
+    <input id="api-base-url" type="url" placeholder="https://leadassist.ai/api/v1" />
 
-    <label for="api-key">API key</label>
-    <input id="api-key" type="password" placeholder="Your API key (optional)" />
+    <label for="identity-token">Identity token <span class="muted">(X-Conversion-Identity-Token)</span></label>
+    <input id="identity-token" type="password" placeholder="Recommended: set in config.local.js instead" />
+    <p class="muted" style="margin-top:4px;font-size:12px;">
+      Preferred: copy <code>config.example.js</code> → <code>config.local.js</code>
+      (gitignored) and put your token there so it is never committed. A value
+      typed here overrides the file.
+    </p>
 
     <label for="items-path">Items endpoint path</label>
     <input id="items-path" type="text" placeholder="/items" />
+
+    <h2>Bulk import</h2>
+
+    <label for="users-path">Users endpoint path <span class="muted">(bulk add users → POST per row)</span></label>
+    <input id="users-path" type="text" placeholder="/users" />
+
+    <label for="status-path">Client status endpoint path <span class="muted">({client} is replaced by the Client ID)</span></label>
+    <input id="status-path" type="text" placeholder="/clients/{client}/statuses" />
 
     <div class="row">
       <button id="save">Save</button>

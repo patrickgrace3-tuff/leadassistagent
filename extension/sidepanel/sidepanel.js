@@ -1,6 +1,9 @@
 // Side panel UI. All privileged work (API calls, tab access) happens in the
 // background service worker; this file only sends messages and renders results.
 
+import { getSettings } from "../lib/api-client.js";
+import { parseTable, buildBody, toCSV } from "../lib/csv.js";
+
 const $ = (id) => document.getElementById(id);
 
 let lastPageContext = null;
@@ -24,6 +27,20 @@ async function send(message) {
   return response.data;
 }
 
+// --- Tabs ---
+
+document.querySelectorAll(".tab").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const name = btn.dataset.tab;
+    document.querySelectorAll(".tab").forEach((b) =>
+      b.classList.toggle("active", b === btn)
+    );
+    document.querySelectorAll(".tab-panel").forEach((p) =>
+      p.classList.toggle("active", p.dataset.panel === name)
+    );
+  });
+});
+
 // --- Connection ---
 
 $("test-connection").addEventListener("click", async () => {
@@ -39,6 +56,181 @@ $("test-connection").addEventListener("click", async () => {
 });
 
 $("open-options").addEventListener("click", () => chrome.runtime.openOptionsPage());
+
+// --- Bulk import engine (shared by Users and Client Status tabs) ---
+
+function renderPreview(el, headers, rows) {
+  el.textContent = "";
+  if (rows.length === 0) {
+    el.innerHTML = '<p class="muted">No rows found.</p>';
+    return;
+  }
+
+  const table = document.createElement("table");
+  const thead = table.createTHead().insertRow();
+  headers.forEach((h) => {
+    const th = document.createElement("th");
+    th.textContent = h;
+    thead.appendChild(th);
+  });
+
+  const tbody = table.createTBody();
+  rows.slice(0, 8).forEach((row) => {
+    const tr = tbody.insertRow();
+    headers.forEach((h) => {
+      tr.insertCell().textContent = row[h] ?? "";
+    });
+  });
+  el.appendChild(table);
+
+  const summary = document.createElement("p");
+  summary.className = "muted";
+  summary.textContent =
+    rows.length > 8
+      ? `Showing 8 of ${rows.length} rows.`
+      : `${rows.length} row(s).`;
+  el.appendChild(summary);
+}
+
+async function runImport(rows, path, progressEl, resultEl, noun) {
+  const bar = progressEl.firstElementChild;
+  progressEl.classList.remove("hidden");
+  resultEl.textContent = "";
+
+  let ok = 0;
+  const errors = [];
+  const failedRows = [];
+
+  for (let i = 0; i < rows.length; i++) {
+    const body = buildBody(rows[i]);
+    try {
+      await send({ type: "api:request", method: "POST", path, body });
+      ok++;
+    } catch (err) {
+      errors.push({ row: i + 2, error: err.message }); // +2: header row + 1-index
+      failedRows.push({ ...rows[i], _error: err.message });
+    }
+    bar.style.width = `${Math.round(((i + 1) / rows.length) * 100)}%`;
+  }
+
+  const failed = errors.length;
+  resultEl.innerHTML =
+    `<p class="${failed ? "warn" : "success"}">` +
+    `Imported ${ok}/${rows.length} ${noun}` +
+    (failed ? `, ${failed} failed.` : ".") +
+    `</p>`;
+  errors.slice(0, 10).forEach((e) => {
+    const p = document.createElement("p");
+    p.className = "err-line";
+    p.textContent = `Row ${e.row}: ${e.error}`;
+    resultEl.appendChild(p);
+  });
+  log(`Import complete: ${ok} ok, ${failed} failed (${path}).`);
+  return { ok, failed, failedRows };
+}
+
+// Trigger a client-side download of the given CSV text.
+function downloadCSV(filename, csv) {
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Wire up one bulk tab. `getPath` returns the endpoint for this run; `validate`
+// (optional) returns an error string to block the import, or null to proceed.
+function setupBulkTab({ prefix, getPath, noun, validate }) {
+  const fileInput = $(`${prefix}-file`);
+  const pasteBox = $(`${prefix}-paste`);
+  const parseBtn = $(`${prefix}-parse`);
+  const previewEl = $(`${prefix}-preview`);
+  const importBtn = $(`${prefix}-import`);
+  const progressEl = $(`${prefix}-progress`);
+  const resultEl = $(`${prefix}-result`);
+  const downloadBtn = $(`${prefix}-download`);
+
+  let parsed = { headers: [], rows: [] };
+  let lastFailed = null; // { headers, rows } of the most recent failed rows
+
+  fileInput.addEventListener("change", async () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+    pasteBox.value = await file.text();
+    log(`Loaded ${file.name} (${file.size} bytes).`);
+  });
+
+  parseBtn.addEventListener("click", () => {
+    parsed = parseTable(pasteBox.value);
+    renderPreview(previewEl, parsed.headers, parsed.rows);
+    importBtn.disabled = parsed.rows.length === 0;
+    downloadBtn.classList.add("hidden");
+  });
+
+  downloadBtn.addEventListener("click", () => {
+    if (!lastFailed) return;
+    downloadCSV(`${prefix}-failed-rows.csv`, toCSV(lastFailed.rows, lastFailed.headers));
+  });
+
+  importBtn.addEventListener("click", async () => {
+    if (parsed.rows.length === 0) return;
+    const problem = validate ? validate() : null;
+    if (problem) {
+      resultEl.innerHTML = `<p class="warn">${problem}</p>`;
+      return;
+    }
+    importBtn.disabled = true;
+    downloadBtn.classList.add("hidden");
+    progressEl.classList.remove("hidden");
+    progressEl.firstElementChild.style.width = "0%";
+    try {
+      const path = await getPath();
+      const result = await runImport(parsed.rows, path, progressEl, resultEl, noun);
+      if (result.failedRows.length > 0) {
+        lastFailed = {
+          headers: [...parsed.headers, "_error"],
+          rows: result.failedRows,
+        };
+        downloadBtn.classList.remove("hidden");
+      }
+    } catch (err) {
+      resultEl.innerHTML = `<p class="warn">Import failed: ${err.message}</p>`;
+      log(`Import failed: ${err.message}`);
+    } finally {
+      importBtn.disabled = false;
+    }
+  });
+}
+
+setupBulkTab({
+  prefix: "users",
+  noun: "users",
+  getPath: async () => (await getSettings()).usersPath,
+});
+
+setupBulkTab({
+  prefix: "status",
+  noun: "statuses",
+  validate: () =>
+    $("status-client-id").value.trim() ? null : "Enter a Client ID first.",
+  getPath: async () => {
+    const { statusPath } = await getSettings();
+    const clientId = $("status-client-id").value.trim();
+    return statusPath.replace("{client}", encodeURIComponent(clientId));
+  },
+});
+
+// Show which endpoints the bulk tabs will hit, from saved settings.
+async function loadSettingsIntoUI() {
+  const s = await getSettings();
+  $("users-endpoint").textContent = `POST ${s.apiBaseUrl}${s.usersPath}`;
+  $("status-endpoint").textContent = `POST ${s.apiBaseUrl}${s.statusPath}`;
+}
+loadSettingsIntoUI();
+// Reflect option changes made in the settings tab without reopening the panel.
+chrome.storage.onChanged.addListener(loadSettingsIntoUI);
 
 // --- Active page ---
 

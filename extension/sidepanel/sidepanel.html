@@ -17,41 +17,114 @@
     <button id="test-connection" class="small">Test</button>
   </section>
 
-  <section class="card">
-    <h2>Active page</h2>
-    <button id="read-page">Read current page</button>
-    <div id="page-context" class="hidden">
-      <dl>
-        <dt>Title</dt><dd id="page-title"></dd>
-        <dt>URL</dt><dd id="page-url"></dd>
-        <dt>Selection</dt><dd id="page-selection"></dd>
-        <dt>Emails</dt><dd id="page-emails"></dd>
-        <dt>Phones</dt><dd id="page-phones"></dd>
-      </dl>
-      <button id="create-from-page">Create item from this page</button>
-    </div>
-  </section>
+  <nav class="tabs">
+    <button class="tab active" data-tab="users">Bulk Users</button>
+    <button class="tab" data-tab="status">Client Status</button>
+    <button class="tab" data-tab="page">Page</button>
+  </nav>
 
-  <section class="card">
-    <h2>Items</h2>
-    <button id="refresh-items">Refresh</button>
-    <ul id="items-list"></ul>
-    <p id="items-empty" class="muted hidden">No items yet.</p>
-  </section>
+  <!-- ── Bulk Users ─────────────────────────────────────────── -->
+  <div class="tab-panel active" data-panel="users">
+    <section class="card">
+      <h2>Bulk add users</h2>
+      <p class="muted">
+        Upload a <code>.csv</code> or paste rows (copy straight from Excel /
+        Sheets). First row = headers. Use <code>a.b</code> for nested fields and
+        <code>col[]</code> with <code>|</code>-separated values for arrays, e.g.
+        <code>business_hours.from</code>, <code>sources[]</code>. Re-running is
+        safe — an existing email is returned, not duplicated.
+      </p>
 
-  <section class="card">
-    <h2>Page tools</h2>
-    <label for="selector-input">CSS selector</label>
-    <input id="selector-input" type="text" placeholder='e.g. input[name="email"]' />
-    <div class="row">
-      <button id="highlight-btn">Highlight</button>
-    </div>
-    <label for="fill-value">Fill value</label>
-    <input id="fill-value" type="text" placeholder="Value to insert" />
-    <div class="row">
-      <button id="fill-btn">Fill on page</button>
-    </div>
-  </section>
+      <input type="file" id="users-file" accept=".csv,text/csv" />
+      <label for="users-paste">…or paste rows</label>
+      <textarea id="users-paste" rows="4"
+        placeholder="name,email,phone,password,role&#10;Ann Lee,ann@x.com,+16155550123,SecureP@ss1,admin"></textarea>
+
+      <div class="row">
+        <button id="users-parse">Preview</button>
+        <span class="muted endpoint" id="users-endpoint"></span>
+      </div>
+
+      <div id="users-preview" class="preview"></div>
+      <button id="users-import" disabled>Import users</button>
+      <div id="users-progress" class="progress hidden"><div></div></div>
+      <div id="users-result" class="result"></div>
+      <button id="users-download" class="hidden">⬇ Download failed rows</button>
+    </section>
+  </div>
+
+  <!-- ── Client Status ──────────────────────────────────────── -->
+  <div class="tab-panel" data-panel="status">
+    <section class="card">
+      <h2>Bulk client statuses</h2>
+      <p class="muted">
+        Create statuses (New, Reapply, Qualified, …) for one client. Enter the
+        Client ID, then give one row per status. Columns:
+        <code>name</code> (required), <code>priority</code>,
+        <code>active</code>, <code>not_qualified</code>,
+        <code>allow_scheduled_calls</code>. A duplicate name is returned, not
+        re-created.
+      </p>
+
+      <label for="status-client-id">Client ID</label>
+      <input id="status-client-id" type="number" min="1" placeholder="e.g. 45" />
+
+      <input type="file" id="status-file" accept=".csv,text/csv" />
+      <label for="status-paste">…or paste rows</label>
+      <textarea id="status-paste" rows="4"
+        placeholder="name,priority,active,not_qualified,allow_scheduled_calls&#10;New,1,true,false,false&#10;Reapply,2,true,false,true"></textarea>
+
+      <div class="row">
+        <button id="status-parse">Preview</button>
+        <span class="muted endpoint" id="status-endpoint"></span>
+      </div>
+
+      <div id="status-preview" class="preview"></div>
+      <button id="status-import" disabled>Create statuses</button>
+      <div id="status-progress" class="progress hidden"><div></div></div>
+      <div id="status-result" class="result"></div>
+      <button id="status-download" class="hidden">⬇ Download failed rows</button>
+    </section>
+  </div>
+
+  <!-- ── Page ───────────────────────────────────────────────── -->
+  <div class="tab-panel" data-panel="page">
+    <section class="card">
+      <h2>Active page</h2>
+      <button id="read-page">Read current page</button>
+      <div id="page-context" class="hidden">
+        <dl>
+          <dt>Title</dt><dd id="page-title"></dd>
+          <dt>URL</dt><dd id="page-url"></dd>
+          <dt>Selection</dt><dd id="page-selection"></dd>
+          <dt>Emails</dt><dd id="page-emails"></dd>
+          <dt>Phones</dt><dd id="page-phones"></dd>
+        </dl>
+        <button id="create-from-page">Create item from this page</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Items</h2>
+      <button id="refresh-items">Refresh</button>
+      <ul id="items-list"></ul>
+      <p id="items-empty" class="muted hidden">No items yet.</p>
+    </section>
+
+    <section class="card">
+      <h2>Page tools</h2>
+      <label for="selector-input">CSS selector</label>
+      <input id="selector-input" type="text" placeholder='e.g. input[name="email"]' />
+      <div class="row">
+        <button id="highlight-btn">Highlight</button>
+      </div>
+      <label for="fill-value">Fill value</label>
+      <input id="fill-value" type="text" placeholder="Value to insert" />
+      <div class="row">
+        <button id="fill-btn">Fill on page</button>
+      </div>
+    </section>
+  </div>
 
   <section class="card">
     <h2>Log</h2>

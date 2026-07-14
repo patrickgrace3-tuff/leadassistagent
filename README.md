@@ -20,20 +20,59 @@ directly in developer mode.
 After pulling new changes, click the **↻ reload** button on the extension's
 card in `chrome://extensions`.
 
+## Set your identity token (do this first)
+
+Every teammate needs their own token, and it must **not** be committed. Keep it
+in a local, gitignored file:
+
+```bash
+cd extension
+cp config.example.js config.local.js   # then edit config.local.js
+```
+
+Put your token in `config.local.js`:
+
+```js
+export default {
+  identityToken: "your-personal-access-token",
+};
+```
+
+The token is a Passport token from the ConversionIA Identity Server: create a
+service account at
+[admin.conversionext.com](https://admin.conversionext.com/admin/resources/service-accounts),
+assign the super-admin role, then use the **Create Personal Access Token**
+action. It is sent as the `X-Conversion-Identity-Token` header (this API does
+**not** use `Authorization: Bearer`). Reload the extension after editing the file.
+
+> `config.local.js` is in `.gitignore`, so your token stays on your machine.
+> The Settings page also has a token field if you'd rather not use the file — a
+> value entered there overrides the file.
+
 ## Configure the API
 
 1. Click **⚙ Settings** in the side panel (or right-click the icon → Options).
-2. Set:
-   - **API base URL** — e.g. `https://api.yourcompany.com/v1` or `http://localhost:3000/api` during development.
-   - **API key** — sent as an `Authorization: Bearer <key>` header (leave blank if your API doesn't need one).
-   - **Items endpoint path** — the resource used by the side panel's list/create buttons (default `/items`).
+2. Confirm:
+   - **API base URL** — `https://leadassist.ai/api/v1` (endpoint paths are
+     appended to this).
+   - **Users / Client status endpoint paths** — defaults `/users` and
+     `/clients/{client}/statuses`; `{client}` is filled from the Client ID you
+     enter in the Client Status tab.
 3. Click **Save & test connection**.
 
-Settings are stored via `chrome.storage.sync`, so they follow each teammate's
-Chrome profile.
+Non-secret settings are stored via `chrome.storage.sync` (they follow your
+Chrome profile); the token lives in `config.local.js`.
 
 ## What it can do today
 
+- **Bulk add users** — upload a `.csv` or paste rows (copy straight from Excel /
+  Sheets), preview them, then send one `POST /users` per row with a live
+  progress bar and per-row success/failure report.
+- **Bulk client statuses** — create statuses (New, Reapply, Qualified, …) for a
+  client. Enter the Client ID and one row per status; each is sent to
+  `POST /clients/{client}/statuses`.
+- **Download failed rows** — after any bulk import, export just the rows that
+  failed (with an `_error` column) as a CSV, so you can fix and re-run them.
 - **Read current page** — pulls title, URL, current text selection, headings,
   and any emails/phone numbers found on the page.
 - **Create item from this page** — POSTs the captured page context to the API.
@@ -41,6 +80,50 @@ Chrome profile.
 - **Highlight** — outlines elements on the active page matching a CSS selector.
 - **Fill on page** — writes a value into an input/textarea on the active page
   (dispatches `input`/`change` events so React-style forms notice).
+
+### Bulk import format
+
+The **first row is column headers** and each header becomes a field on the JSON
+body sent (one `POST` per data row). Cell values are typed automatically:
+`true`/`false` → booleans, plain integers/decimals → numbers, empty cells are
+omitted (so the API applies its own default). Leading-zero strings (zips, phone
+numbers) stay strings.
+
+Two header conventions cover the nested Lead Assist payloads:
+
+- **Nested fields** with dots: `business_hours.from` → `{ "business_hours": { "from": 8 } }`
+- **Arrays** with `[]` and `|`-separated values: a `sources[]` cell of
+  `Indeed|Facebook|Chat` → `{ "sources": ["Indeed", "Facebook", "Chat"] }`
+
+**Bulk Users** (`POST /users`) — a minimal file:
+
+```csv
+name,email,phone,password,role
+Ann Lee,ann@example.com,+16155550123,SecureP@ss1,admin
+```
+
+A richer one using the conventions:
+
+```csv
+name,email,password,business_hours.from,business_hours.to,sources[]
+Ann Lee,ann@example.com,SecureP@ss1,8,17,Indeed|Facebook
+```
+
+**Bulk client statuses** (`POST /clients/{client}/statuses`) — enter the Client
+ID in the tab, then one row per status:
+
+```csv
+name,priority,active,not_qualified,allow_scheduled_calls
+New,1,true,false,false
+Reapply,2,true,false,true
+```
+
+Both endpoints de-duplicate: an existing user email / status name is returned
+rather than re-created, so re-running an import is safe.
+
+> Excel `.xlsx` files aren't parsed directly — either **Save As → CSV**, or just
+> select the cells in Excel and **paste** them into the box (they arrive as
+> tab-separated rows, which the extension handles).
 
 ## Architecture
 
