@@ -73,6 +73,14 @@ async function request(method, path, body) {
     headers["X-Conversion-Identity-Token"] = identityToken;
   }
 
+  // Diagnostic: shows in the service worker console whether the token is
+  // attached to each outgoing request.
+  console.log(
+    `[LeadAssist] ${method} ${url} — token ${
+      identityToken ? `attached (${identityToken.length} chars)` : "MISSING"
+    }`
+  );
+
   const response = await fetch(url, {
     method,
     headers,
