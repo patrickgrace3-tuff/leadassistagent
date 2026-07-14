@@ -5,23 +5,19 @@ const $ = (id) => document.getElementById(id);
 async function load() {
   const s = await getSettings();
   $("api-base-url").value = s.apiBaseUrl;
-  $("api-key").value = s.apiKey;
+  $("identity-token").value = s.identityToken;
   $("items-path").value = s.itemsPath;
   $("users-path").value = s.usersPath;
   $("status-path").value = s.statusPath;
-  $("status-field").value = s.statusField;
-  $("status-options").value = s.statusOptions;
 }
 
 async function save() {
   await saveSettings({
     apiBaseUrl: $("api-base-url").value.trim(),
-    apiKey: $("api-key").value.trim(),
+    identityToken: $("identity-token").value.trim(),
     itemsPath: $("items-path").value.trim() || "/items",
     usersPath: $("users-path").value.trim() || "/users",
-    statusPath: $("status-path").value.trim() || "/lead-statuses",
-    statusField: $("status-field").value.trim() || "status",
-    statusOptions: $("status-options").value.trim() || "New, Reapply",
+    statusPath: $("status-path").value.trim() || "/clients/{client}/statuses",
   });
   $("status").textContent = "Saved.";
 }

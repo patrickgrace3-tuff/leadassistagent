@@ -4,16 +4,15 @@
 // key on the extension's options page.
 
 const DEFAULT_SETTINGS = {
-  apiBaseUrl: "http://localhost:3000/api",
-  apiKey: "",
+  apiBaseUrl: "https://leadassist.ai/api",
+  // Sent as the X-Conversion-Identity-Token header (Passport token from the
+  // ConversionIA Identity Server). NOT an Authorization: Bearer header.
+  identityToken: "",
   itemsPath: "/items",
   // Bulk import endpoints (one POST request per row is sent to these paths).
   usersPath: "/users",
-  statusPath: "/lead-statuses",
-  // Field name the selected status is written to on each client-status row.
-  statusField: "status",
-  // Options offered in the Client Status picker (comma-separated in settings).
-  statusOptions: "New, Reapply",
+  // {client} is replaced by the Client ID entered in the Client Status tab.
+  statusPath: "/clients/{client}/statuses",
 };
 
 export async function getSettings() {
@@ -26,15 +25,20 @@ export async function saveSettings(settings) {
 }
 
 async function request(method, path, body) {
-  const { apiBaseUrl, apiKey } = await getSettings();
+  const { apiBaseUrl, identityToken } = await getSettings();
   if (!apiBaseUrl) {
     throw new Error("API base URL is not configured. Open the extension options page.");
   }
 
   const url = apiBaseUrl.replace(/\/+$/, "") + path;
-  const headers = { "Content-Type": "application/json" };
-  if (apiKey) {
-    headers["Authorization"] = `Bearer ${apiKey}`;
+  const headers = {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  };
+  // ConversionIA Identity Server Passport token. This API does NOT use
+  // Authorization: Bearer — the token goes in this custom header.
+  if (identityToken) {
+    headers["X-Conversion-Identity-Token"] = identityToken;
   }
 
   const response = await fetch(url, {

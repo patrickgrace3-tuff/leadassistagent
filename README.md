@@ -24,9 +24,15 @@ card in `chrome://extensions`.
 
 1. Click **⚙ Settings** in the side panel (or right-click the icon → Options).
 2. Set:
-   - **API base URL** — e.g. `https://api.yourcompany.com/v1` or `http://localhost:3000/api` during development.
-   - **API key** — sent as an `Authorization: Bearer <key>` header (leave blank if your API doesn't need one).
-   - **Items endpoint path** — the resource used by the side panel's list/create buttons (default `/items`).
+   - **API base URL** — `https://leadassist.ai/api`.
+   - **Identity token** — sent as the `X-Conversion-Identity-Token` header. This
+     is a Passport token from the ConversionIA Identity Server: create a service
+     account at [admin.conversionext.com](https://admin.conversionext.com/admin/resources/service-accounts),
+     assign the super-admin role, then use the **Create Personal Access Token**
+     action. (This API does **not** use `Authorization: Bearer`.)
+   - **Users / Client status endpoint paths** — defaults `/users` and
+     `/clients/{client}/statuses`; `{client}` is filled from the Client ID you
+     enter in the Client Status tab.
 3. Click **Save & test connection**.
 
 Settings are stored via `chrome.storage.sync`, so they follow each teammate's
@@ -50,23 +56,42 @@ Chrome profile.
 ### Bulk import format
 
 The **first row is column headers** and each header becomes a field on the JSON
-object sent to your API. So a Bulk Users file like:
+body sent (one `POST` per data row). Cell values are typed automatically:
+`true`/`false` → booleans, plain integers/decimals → numbers, empty cells are
+omitted (so the API applies its own default). Leading-zero strings (zips, phone
+numbers) stay strings.
+
+Two header conventions cover the nested Lead Assist payloads:
+
+- **Nested fields** with dots: `business_hours.from` → `{ "business_hours": { "from": 8 } }`
+- **Arrays** with `[]` and `|`-separated values: a `sources[]` cell of
+  `Indeed|Facebook|Chat` → `{ "sources": ["Indeed", "Facebook", "Chat"] }`
+
+**Bulk Users** (`POST /users`) — a minimal file:
 
 ```csv
-email,name,role
-ann@example.com,Ann Lee,agent
-bo@example.com,Bo Ray,manager
+name,email,phone,password,role
+Ann Lee,ann@example.com,+16155550123,SecureP@ss1,admin
 ```
 
-sends `POST {usersPath}` twice, with bodies
-`{ "email": "ann@example.com", "name": "Ann Lee", "role": "agent" }` etc. Make
-your columns match the fields your API expects.
+A richer one using the conventions:
 
-For **client statuses**, each row identifies a lead (e.g. an `email` or
-`leadId` column) and the picked status is added under the configured status
-field (default `status`). A per-row `status` column, if present, overrides the
-picker. Configure the endpoints, the status field name, and the list of status
-options on the **Settings** page.
+```csv
+name,email,password,business_hours.from,business_hours.to,sources[]
+Ann Lee,ann@example.com,SecureP@ss1,8,17,Indeed|Facebook
+```
+
+**Bulk client statuses** (`POST /clients/{client}/statuses`) — enter the Client
+ID in the tab, then one row per status:
+
+```csv
+name,priority,active,not_qualified,allow_scheduled_calls
+New,1,true,false,false
+Reapply,2,true,false,true
+```
+
+Both endpoints de-duplicate: an existing user email / status name is returned
+rather than re-created, so re-running an import is safe.
 
 > Excel `.xlsx` files aren't parsed directly — either **Save As → CSV**, or just
 > select the cells in Excel and **paste** them into the box (they arrive as

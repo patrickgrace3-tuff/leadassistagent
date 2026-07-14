@@ -29,14 +29,16 @@
       <h2>Bulk add users</h2>
       <p class="muted">
         Upload a <code>.csv</code> or paste rows (copy straight from Excel /
-        Sheets). The first row must be column headers matching your API's user
-        fields, e.g. <code>email, name, role</code>.
+        Sheets). First row = headers. Use <code>a.b</code> for nested fields and
+        <code>col[]</code> with <code>|</code>-separated values for arrays, e.g.
+        <code>business_hours.from</code>, <code>sources[]</code>. Re-running is
+        safe — an existing email is returned, not duplicated.
       </p>
 
       <input type="file" id="users-file" accept=".csv,text/csv" />
       <label for="users-paste">…or paste rows</label>
       <textarea id="users-paste" rows="4"
-        placeholder="email,name,role&#10;ann@x.com,Ann Lee,agent"></textarea>
+        placeholder="name,email,phone,password,role&#10;Ann Lee,ann@x.com,+16155550123,SecureP@ss1,admin"></textarea>
 
       <div class="row">
         <button id="users-parse">Preview</button>
@@ -55,19 +57,21 @@
     <section class="card">
       <h2>Bulk client statuses</h2>
       <p class="muted">
-        Apply a status (New, Reapply, …) to many leads at once. Each row must
-        identify a lead (e.g. an <code>email</code> or <code>leadId</code>
-        column). A per-row <code>status</code> column, if present, wins over the
-        picker.
+        Create statuses (New, Reapply, Qualified, …) for one client. Enter the
+        Client ID, then give one row per status. Columns:
+        <code>name</code> (required), <code>priority</code>,
+        <code>active</code>, <code>not_qualified</code>,
+        <code>allow_scheduled_calls</code>. A duplicate name is returned, not
+        re-created.
       </p>
 
-      <label for="status-select">Status to apply</label>
-      <select id="status-select"></select>
+      <label for="status-client-id">Client ID</label>
+      <input id="status-client-id" type="number" min="1" placeholder="e.g. 45" />
 
       <input type="file" id="status-file" accept=".csv,text/csv" />
       <label for="status-paste">…or paste rows</label>
       <textarea id="status-paste" rows="4"
-        placeholder="email&#10;lead1@x.com&#10;lead2@x.com"></textarea>
+        placeholder="name,priority,active,not_qualified,allow_scheduled_calls&#10;New,1,true,false,false&#10;Reapply,2,true,false,true"></textarea>
 
       <div class="row">
         <button id="status-parse">Preview</button>
@@ -75,7 +79,7 @@
       </div>
 
       <div id="status-preview" class="preview"></div>
-      <button id="status-import" disabled>Apply status</button>
+      <button id="status-import" disabled>Create statuses</button>
       <div id="status-progress" class="progress hidden"><div></div></div>
       <div id="status-result" class="result"></div>
     </section>

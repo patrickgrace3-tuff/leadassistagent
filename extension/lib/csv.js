@@ -29,6 +29,57 @@ export function parseTable(text) {
   return { headers, rows };
 }
 
+// Turn a cell string into a typed JSON value. Empty cells become undefined so
+// the caller can omit the field entirely (and let the API apply its default).
+// Leading-zero strings (zips, phone numbers) are left as strings on purpose.
+export function coerceValue(raw) {
+  const s = String(raw).trim();
+  if (s === "") return undefined;
+  const lower = s.toLowerCase();
+  if (lower === "true") return true;
+  if (lower === "false") return false;
+  if (lower === "null") return null;
+  if (/^-?(0|[1-9]\d*)(\.\d+)?$/.test(s)) return Number(s);
+  return s;
+}
+
+// Expand a flat header→string row into a typed, possibly-nested JSON body:
+//   "business_hours.from"  -> { business_hours: { from: 8 } }
+//   "sources[]" = "A|B|C"  -> { sources: ["A", "B", "C"] }
+// Values are coerced with coerceValue; empty cells are skipped.
+export function buildBody(row) {
+  const body = {};
+  for (const [rawKey, rawVal] of Object.entries(row)) {
+    let key = rawKey.trim();
+    if (key === "") continue;
+
+    const isArray = key.endsWith("[]");
+    if (isArray) key = key.slice(0, -2);
+
+    let value;
+    if (isArray) {
+      value = String(rawVal)
+        .split("|")
+        .map((p) => coerceValue(p))
+        .filter((p) => p !== undefined);
+      if (value.length === 0) continue;
+    } else {
+      value = coerceValue(rawVal);
+      if (value === undefined) continue;
+    }
+
+    const path = key.split(".");
+    let node = body;
+    for (let i = 0; i < path.length - 1; i++) {
+      const seg = path[i];
+      if (typeof node[seg] !== "object" || node[seg] === null) node[seg] = {};
+      node = node[seg];
+    }
+    node[path[path.length - 1]] = value;
+  }
+  return body;
+}
+
 function parseDelimited(text, delimiter) {
   const rows = [];
   let row = [];

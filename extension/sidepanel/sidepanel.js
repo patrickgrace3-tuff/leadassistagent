@@ -2,7 +2,7 @@
 // background service worker; this file only sends messages and renders results.
 
 import { getSettings } from "../lib/api-client.js";
-import { parseTable } from "../lib/csv.js";
+import { parseTable, buildBody } from "../lib/csv.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -92,7 +92,7 @@ function renderPreview(el, headers, rows) {
   el.appendChild(summary);
 }
 
-async function runImport(rows, path, transformRow, progressEl, resultEl, noun) {
+async function runImport(rows, path, progressEl, resultEl, noun) {
   const bar = progressEl.firstElementChild;
   progressEl.classList.remove("hidden");
   resultEl.textContent = "";
@@ -101,7 +101,7 @@ async function runImport(rows, path, transformRow, progressEl, resultEl, noun) {
   const errors = [];
 
   for (let i = 0; i < rows.length; i++) {
-    const body = transformRow ? transformRow(rows[i]) : rows[i];
+    const body = buildBody(rows[i]);
     try {
       await send({ type: "api:request", method: "POST", path, body });
       ok++;
@@ -126,9 +126,9 @@ async function runImport(rows, path, transformRow, progressEl, resultEl, noun) {
   log(`Import complete: ${ok} ok, ${failed} failed (${path}).`);
 }
 
-// Wire up one bulk tab. `transformRow` is optional and lets a tab mutate each
-// row before it's sent (used by Client Status to inject the picked status).
-function setupBulkTab({ prefix, getPath, noun, transformRow }) {
+// Wire up one bulk tab. `getPath` returns the endpoint for this run; `validate`
+// (optional) returns an error string to block the import, or null to proceed.
+function setupBulkTab({ prefix, getPath, noun, validate }) {
   const fileInput = $(`${prefix}-file`);
   const pasteBox = $(`${prefix}-paste`);
   const parseBtn = $(`${prefix}-parse`);
@@ -154,13 +154,17 @@ function setupBulkTab({ prefix, getPath, noun, transformRow }) {
 
   importBtn.addEventListener("click", async () => {
     if (parsed.rows.length === 0) return;
+    const problem = validate ? validate() : null;
+    if (problem) {
+      resultEl.innerHTML = `<p class="warn">${problem}</p>`;
+      return;
+    }
     importBtn.disabled = true;
     progressEl.classList.remove("hidden");
     progressEl.firstElementChild.style.width = "0%";
     try {
       const path = await getPath();
-      await runImport(parsed.rows, path, transformRow, progressEl, resultEl, noun);
-      await refreshItems().catch(() => {});
+      await runImport(parsed.rows, path, progressEl, resultEl, noun);
     } catch (err) {
       resultEl.innerHTML = `<p class="warn">Import failed: ${err.message}</p>`;
       log(`Import failed: ${err.message}`);
@@ -176,36 +180,21 @@ setupBulkTab({
   getPath: async () => (await getSettings()).usersPath,
 });
 
-let statusField = "status";
 setupBulkTab({
   prefix: "status",
   noun: "statuses",
-  getPath: async () => (await getSettings()).statusPath,
-  transformRow: (row) => {
-    const out = { ...row };
-    if (!out[statusField]) out[statusField] = $("status-select").value;
-    return out;
+  validate: () =>
+    $("status-client-id").value.trim() ? null : "Enter a Client ID first.",
+  getPath: async () => {
+    const { statusPath } = await getSettings();
+    const clientId = $("status-client-id").value.trim();
+    return statusPath.replace("{client}", encodeURIComponent(clientId));
   },
 });
 
-// Populate the status picker and endpoint hints from saved settings.
+// Show which endpoints the bulk tabs will hit, from saved settings.
 async function loadSettingsIntoUI() {
   const s = await getSettings();
-  statusField = s.statusField || "status";
-
-  const select = $("status-select");
-  select.textContent = "";
-  (s.statusOptions || "")
-    .split(",")
-    .map((o) => o.trim())
-    .filter(Boolean)
-    .forEach((opt) => {
-      const o = document.createElement("option");
-      o.value = opt;
-      o.textContent = opt;
-      select.appendChild(o);
-    });
-
   $("users-endpoint").textContent = `POST ${s.apiBaseUrl}${s.usersPath}`;
   $("status-endpoint").textContent = `POST ${s.apiBaseUrl}${s.statusPath}`;
 }
