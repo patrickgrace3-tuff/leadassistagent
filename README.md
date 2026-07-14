@@ -27,16 +27,19 @@ in a local, gitignored file:
 
 ```bash
 cd extension
-cp config.example.js config.local.js   # then edit config.local.js
+cp config.example.json config.local.json   # then edit config.local.json
 ```
 
-Put your token in `config.local.js`:
+Put your token in `config.local.json`:
 
-```js
-export default {
-  identityToken: "your-personal-access-token",
-};
+```json
+{
+  "identityToken": "your-personal-access-token"
+}
 ```
+
+You can optionally add `"apiBaseUrl": "https://leadassist.ai/api/v1"` to override
+the base URL for this machine.
 
 The token is a Passport token from the ConversionIA Identity Server: create a
 service account at
@@ -45,7 +48,7 @@ assign the super-admin role, then use the **Create Personal Access Token**
 action. It is sent as the `X-Conversion-Identity-Token` header (this API does
 **not** use `Authorization: Bearer`). Reload the extension after editing the file.
 
-> `config.local.js` is in `.gitignore`, so your token stays on your machine.
+> `config.local.json` is in `.gitignore`, so your token stays on your machine.
 > The Settings page also has a token field if you'd rather not use the file — a
 > value entered there overrides the file.
 
@@ -61,7 +64,7 @@ action. It is sent as the `X-Conversion-Identity-Token` header (this API does
 3. Click **Save & test connection**.
 
 Non-secret settings are stored via `chrome.storage.sync` (they follow your
-Chrome profile); the token lives in `config.local.js`.
+Chrome profile); the token lives in `config.local.json`.
 
 ## What it can do today
 

@@ -4,4 +4,5 @@ node_modules/
 *.zip
 
 # Per-machine token / overrides — never commit
+extension/config.local.json
 extension/config.local.js
