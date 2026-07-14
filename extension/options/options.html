@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Lead Assist – Settings</title>
+  <link rel="stylesheet" href="options.css" />
+</head>
+<body>
+  <main>
+    <h1>Lead Assist settings</h1>
+    <p class="muted">
+      These settings sync with your Chrome profile. The API key is only sent as
+      a <code>Authorization: Bearer</code> header to the base URL below.
+    </p>
+
+    <label for="api-base-url">API base URL</label>
+    <input id="api-base-url" type="url" placeholder="https://api.example.com/v1" />
+
+    <label for="api-key">API key</label>
+    <input id="api-key" type="password" placeholder="Your API key (optional)" />
+
+    <label for="items-path">Items endpoint path</label>
+    <input id="items-path" type="text" placeholder="/items" />
+
+    <div class="row">
+      <button id="save">Save</button>
+      <button id="test">Save &amp; test connection</button>
+    </div>
+
+    <p id="status"></p>
+  </main>
+  <script src="options.js" type="module"></script>
+</body>
+</html>
