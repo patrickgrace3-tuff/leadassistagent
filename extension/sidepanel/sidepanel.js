@@ -181,6 +181,16 @@ function setupBulkTab({ prefix, getPath, noun, validate }) {
       resultEl.innerHTML = `<p class="warn">${problem}</p>`;
       return;
     }
+    // Fail fast if there's no token, rather than firing N tokenless requests
+    // that each come back 401 "Missing X-Conversion-Identity-Token".
+    const { identityToken } = await getSettings();
+    if (!identityToken) {
+      resultEl.innerHTML =
+        '<p class="warn">No identity token found. Add it in ⚙ Settings, or in ' +
+        "<code>extension/config.local.json</code>, then reload the extension at " +
+        "chrome://extensions.</p>";
+      return;
+    }
     importBtn.disabled = true;
     downloadBtn.classList.add("hidden");
     progressEl.classList.remove("hidden");
