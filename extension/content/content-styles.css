@@ -1,0 +1,6 @@
+.lead-assist-highlight {
+  outline: 3px solid #f59e0b !important;
+  outline-offset: 2px !important;
+  border-radius: 2px;
+  transition: outline-color 0.2s ease-in-out;
+}
