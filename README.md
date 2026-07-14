@@ -34,6 +34,11 @@ Chrome profile.
 
 ## What it can do today
 
+- **Bulk add users** — upload a `.csv` or paste rows (copy straight from Excel /
+  Sheets), preview them, then send one `POST` per row to your users endpoint
+  with a live progress bar and per-row success/failure report.
+- **Bulk client statuses** — apply a status (New, Reapply, …) to many leads at
+  once. Pick the status from a configurable list; each row identifies a lead.
 - **Read current page** — pulls title, URL, current text selection, headings,
   and any emails/phone numbers found on the page.
 - **Create item from this page** — POSTs the captured page context to the API.
@@ -41,6 +46,31 @@ Chrome profile.
 - **Highlight** — outlines elements on the active page matching a CSS selector.
 - **Fill on page** — writes a value into an input/textarea on the active page
   (dispatches `input`/`change` events so React-style forms notice).
+
+### Bulk import format
+
+The **first row is column headers** and each header becomes a field on the JSON
+object sent to your API. So a Bulk Users file like:
+
+```csv
+email,name,role
+ann@example.com,Ann Lee,agent
+bo@example.com,Bo Ray,manager
+```
+
+sends `POST {usersPath}` twice, with bodies
+`{ "email": "ann@example.com", "name": "Ann Lee", "role": "agent" }` etc. Make
+your columns match the fields your API expects.
+
+For **client statuses**, each row identifies a lead (e.g. an `email` or
+`leadId` column) and the picked status is added under the configured status
+field (default `status`). A per-row `status` column, if present, overrides the
+picker. Configure the endpoints, the status field name, and the list of status
+options on the **Settings** page.
+
+> Excel `.xlsx` files aren't parsed directly — either **Save As → CSV**, or just
+> select the cells in Excel and **paste** them into the box (they arrive as
+> tab-separated rows, which the extension handles).
 
 ## Architecture
 

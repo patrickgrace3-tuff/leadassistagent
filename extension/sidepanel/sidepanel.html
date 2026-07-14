@@ -17,41 +17,108 @@
     <button id="test-connection" class="small">Test</button>
   </section>
 
-  <section class="card">
-    <h2>Active page</h2>
-    <button id="read-page">Read current page</button>
-    <div id="page-context" class="hidden">
-      <dl>
-        <dt>Title</dt><dd id="page-title"></dd>
-        <dt>URL</dt><dd id="page-url"></dd>
-        <dt>Selection</dt><dd id="page-selection"></dd>
-        <dt>Emails</dt><dd id="page-emails"></dd>
-        <dt>Phones</dt><dd id="page-phones"></dd>
-      </dl>
-      <button id="create-from-page">Create item from this page</button>
-    </div>
-  </section>
+  <nav class="tabs">
+    <button class="tab active" data-tab="users">Bulk Users</button>
+    <button class="tab" data-tab="status">Client Status</button>
+    <button class="tab" data-tab="page">Page</button>
+  </nav>
 
-  <section class="card">
-    <h2>Items</h2>
-    <button id="refresh-items">Refresh</button>
-    <ul id="items-list"></ul>
-    <p id="items-empty" class="muted hidden">No items yet.</p>
-  </section>
+  <!-- ── Bulk Users ─────────────────────────────────────────── -->
+  <div class="tab-panel active" data-panel="users">
+    <section class="card">
+      <h2>Bulk add users</h2>
+      <p class="muted">
+        Upload a <code>.csv</code> or paste rows (copy straight from Excel /
+        Sheets). The first row must be column headers matching your API's user
+        fields, e.g. <code>email, name, role</code>.
+      </p>
 
-  <section class="card">
-    <h2>Page tools</h2>
-    <label for="selector-input">CSS selector</label>
-    <input id="selector-input" type="text" placeholder='e.g. input[name="email"]' />
-    <div class="row">
-      <button id="highlight-btn">Highlight</button>
-    </div>
-    <label for="fill-value">Fill value</label>
-    <input id="fill-value" type="text" placeholder="Value to insert" />
-    <div class="row">
-      <button id="fill-btn">Fill on page</button>
-    </div>
-  </section>
+      <input type="file" id="users-file" accept=".csv,text/csv" />
+      <label for="users-paste">…or paste rows</label>
+      <textarea id="users-paste" rows="4"
+        placeholder="email,name,role&#10;ann@x.com,Ann Lee,agent"></textarea>
+
+      <div class="row">
+        <button id="users-parse">Preview</button>
+        <span class="muted endpoint" id="users-endpoint"></span>
+      </div>
+
+      <div id="users-preview" class="preview"></div>
+      <button id="users-import" disabled>Import users</button>
+      <div id="users-progress" class="progress hidden"><div></div></div>
+      <div id="users-result" class="result"></div>
+    </section>
+  </div>
+
+  <!-- ── Client Status ──────────────────────────────────────── -->
+  <div class="tab-panel" data-panel="status">
+    <section class="card">
+      <h2>Bulk client statuses</h2>
+      <p class="muted">
+        Apply a status (New, Reapply, …) to many leads at once. Each row must
+        identify a lead (e.g. an <code>email</code> or <code>leadId</code>
+        column). A per-row <code>status</code> column, if present, wins over the
+        picker.
+      </p>
+
+      <label for="status-select">Status to apply</label>
+      <select id="status-select"></select>
+
+      <input type="file" id="status-file" accept=".csv,text/csv" />
+      <label for="status-paste">…or paste rows</label>
+      <textarea id="status-paste" rows="4"
+        placeholder="email&#10;lead1@x.com&#10;lead2@x.com"></textarea>
+
+      <div class="row">
+        <button id="status-parse">Preview</button>
+        <span class="muted endpoint" id="status-endpoint"></span>
+      </div>
+
+      <div id="status-preview" class="preview"></div>
+      <button id="status-import" disabled>Apply status</button>
+      <div id="status-progress" class="progress hidden"><div></div></div>
+      <div id="status-result" class="result"></div>
+    </section>
+  </div>
+
+  <!-- ── Page ───────────────────────────────────────────────── -->
+  <div class="tab-panel" data-panel="page">
+    <section class="card">
+      <h2>Active page</h2>
+      <button id="read-page">Read current page</button>
+      <div id="page-context" class="hidden">
+        <dl>
+          <dt>Title</dt><dd id="page-title"></dd>
+          <dt>URL</dt><dd id="page-url"></dd>
+          <dt>Selection</dt><dd id="page-selection"></dd>
+          <dt>Emails</dt><dd id="page-emails"></dd>
+          <dt>Phones</dt><dd id="page-phones"></dd>
+        </dl>
+        <button id="create-from-page">Create item from this page</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Items</h2>
+      <button id="refresh-items">Refresh</button>
+      <ul id="items-list"></ul>
+      <p id="items-empty" class="muted hidden">No items yet.</p>
+    </section>
+
+    <section class="card">
+      <h2>Page tools</h2>
+      <label for="selector-input">CSS selector</label>
+      <input id="selector-input" type="text" placeholder='e.g. input[name="email"]' />
+      <div class="row">
+        <button id="highlight-btn">Highlight</button>
+      </div>
+      <label for="fill-value">Fill value</label>
+      <input id="fill-value" type="text" placeholder="Value to insert" />
+      <div class="row">
+        <button id="fill-btn">Fill on page</button>
+      </div>
+    </section>
+  </div>
 
   <section class="card">
     <h2>Log</h2>

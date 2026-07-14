@@ -3,10 +3,14 @@ import { getSettings, saveSettings } from "../lib/api-client.js";
 const $ = (id) => document.getElementById(id);
 
 async function load() {
-  const { apiBaseUrl, apiKey, itemsPath } = await getSettings();
-  $("api-base-url").value = apiBaseUrl;
-  $("api-key").value = apiKey;
-  $("items-path").value = itemsPath;
+  const s = await getSettings();
+  $("api-base-url").value = s.apiBaseUrl;
+  $("api-key").value = s.apiKey;
+  $("items-path").value = s.itemsPath;
+  $("users-path").value = s.usersPath;
+  $("status-path").value = s.statusPath;
+  $("status-field").value = s.statusField;
+  $("status-options").value = s.statusOptions;
 }
 
 async function save() {
@@ -14,6 +18,10 @@ async function save() {
     apiBaseUrl: $("api-base-url").value.trim(),
     apiKey: $("api-key").value.trim(),
     itemsPath: $("items-path").value.trim() || "/items",
+    usersPath: $("users-path").value.trim() || "/users",
+    statusPath: $("status-path").value.trim() || "/lead-statuses",
+    statusField: $("status-field").value.trim() || "status",
+    statusOptions: $("status-options").value.trim() || "New, Reapply",
   });
   $("status").textContent = "Saved.";
 }

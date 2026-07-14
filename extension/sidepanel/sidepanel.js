@@ -1,6 +1,9 @@
 // Side panel UI. All privileged work (API calls, tab access) happens in the
 // background service worker; this file only sends messages and renders results.
 
+import { getSettings } from "../lib/api-client.js";
+import { parseTable } from "../lib/csv.js";
+
 const $ = (id) => document.getElementById(id);
 
 let lastPageContext = null;
@@ -24,6 +27,20 @@ async function send(message) {
   return response.data;
 }
 
+// --- Tabs ---
+
+document.querySelectorAll(".tab").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const name = btn.dataset.tab;
+    document.querySelectorAll(".tab").forEach((b) =>
+      b.classList.toggle("active", b === btn)
+    );
+    document.querySelectorAll(".tab-panel").forEach((p) =>
+      p.classList.toggle("active", p.dataset.panel === name)
+    );
+  });
+});
+
 // --- Connection ---
 
 $("test-connection").addEventListener("click", async () => {
@@ -39,6 +56,162 @@ $("test-connection").addEventListener("click", async () => {
 });
 
 $("open-options").addEventListener("click", () => chrome.runtime.openOptionsPage());
+
+// --- Bulk import engine (shared by Users and Client Status tabs) ---
+
+function renderPreview(el, headers, rows) {
+  el.textContent = "";
+  if (rows.length === 0) {
+    el.innerHTML = '<p class="muted">No rows found.</p>';
+    return;
+  }
+
+  const table = document.createElement("table");
+  const thead = table.createTHead().insertRow();
+  headers.forEach((h) => {
+    const th = document.createElement("th");
+    th.textContent = h;
+    thead.appendChild(th);
+  });
+
+  const tbody = table.createTBody();
+  rows.slice(0, 8).forEach((row) => {
+    const tr = tbody.insertRow();
+    headers.forEach((h) => {
+      tr.insertCell().textContent = row[h] ?? "";
+    });
+  });
+  el.appendChild(table);
+
+  const summary = document.createElement("p");
+  summary.className = "muted";
+  summary.textContent =
+    rows.length > 8
+      ? `Showing 8 of ${rows.length} rows.`
+      : `${rows.length} row(s).`;
+  el.appendChild(summary);
+}
+
+async function runImport(rows, path, transformRow, progressEl, resultEl, noun) {
+  const bar = progressEl.firstElementChild;
+  progressEl.classList.remove("hidden");
+  resultEl.textContent = "";
+
+  let ok = 0;
+  const errors = [];
+
+  for (let i = 0; i < rows.length; i++) {
+    const body = transformRow ? transformRow(rows[i]) : rows[i];
+    try {
+      await send({ type: "api:request", method: "POST", path, body });
+      ok++;
+    } catch (err) {
+      errors.push({ row: i + 2, error: err.message }); // +2: header row + 1-index
+    }
+    bar.style.width = `${Math.round(((i + 1) / rows.length) * 100)}%`;
+  }
+
+  const failed = errors.length;
+  resultEl.innerHTML =
+    `<p class="${failed ? "warn" : "success"}">` +
+    `Imported ${ok}/${rows.length} ${noun}` +
+    (failed ? `, ${failed} failed.` : ".") +
+    `</p>`;
+  errors.slice(0, 10).forEach((e) => {
+    const p = document.createElement("p");
+    p.className = "err-line";
+    p.textContent = `Row ${e.row}: ${e.error}`;
+    resultEl.appendChild(p);
+  });
+  log(`Import complete: ${ok} ok, ${failed} failed (${path}).`);
+}
+
+// Wire up one bulk tab. `transformRow` is optional and lets a tab mutate each
+// row before it's sent (used by Client Status to inject the picked status).
+function setupBulkTab({ prefix, getPath, noun, transformRow }) {
+  const fileInput = $(`${prefix}-file`);
+  const pasteBox = $(`${prefix}-paste`);
+  const parseBtn = $(`${prefix}-parse`);
+  const previewEl = $(`${prefix}-preview`);
+  const importBtn = $(`${prefix}-import`);
+  const progressEl = $(`${prefix}-progress`);
+  const resultEl = $(`${prefix}-result`);
+
+  let parsed = { headers: [], rows: [] };
+
+  fileInput.addEventListener("change", async () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+    pasteBox.value = await file.text();
+    log(`Loaded ${file.name} (${file.size} bytes).`);
+  });
+
+  parseBtn.addEventListener("click", () => {
+    parsed = parseTable(pasteBox.value);
+    renderPreview(previewEl, parsed.headers, parsed.rows);
+    importBtn.disabled = parsed.rows.length === 0;
+  });
+
+  importBtn.addEventListener("click", async () => {
+    if (parsed.rows.length === 0) return;
+    importBtn.disabled = true;
+    progressEl.classList.remove("hidden");
+    progressEl.firstElementChild.style.width = "0%";
+    try {
+      const path = await getPath();
+      await runImport(parsed.rows, path, transformRow, progressEl, resultEl, noun);
+      await refreshItems().catch(() => {});
+    } catch (err) {
+      resultEl.innerHTML = `<p class="warn">Import failed: ${err.message}</p>`;
+      log(`Import failed: ${err.message}`);
+    } finally {
+      importBtn.disabled = false;
+    }
+  });
+}
+
+setupBulkTab({
+  prefix: "users",
+  noun: "users",
+  getPath: async () => (await getSettings()).usersPath,
+});
+
+let statusField = "status";
+setupBulkTab({
+  prefix: "status",
+  noun: "statuses",
+  getPath: async () => (await getSettings()).statusPath,
+  transformRow: (row) => {
+    const out = { ...row };
+    if (!out[statusField]) out[statusField] = $("status-select").value;
+    return out;
+  },
+});
+
+// Populate the status picker and endpoint hints from saved settings.
+async function loadSettingsIntoUI() {
+  const s = await getSettings();
+  statusField = s.statusField || "status";
+
+  const select = $("status-select");
+  select.textContent = "";
+  (s.statusOptions || "")
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean)
+    .forEach((opt) => {
+      const o = document.createElement("option");
+      o.value = opt;
+      o.textContent = opt;
+      select.appendChild(o);
+    });
+
+  $("users-endpoint").textContent = `POST ${s.apiBaseUrl}${s.usersPath}`;
+  $("status-endpoint").textContent = `POST ${s.apiBaseUrl}${s.statusPath}`;
+}
+loadSettingsIntoUI();
+// Reflect option changes made in the settings tab without reopening the panel.
+chrome.storage.onChanged.addListener(loadSettingsIntoUI);
 
 // --- Active page ---
 

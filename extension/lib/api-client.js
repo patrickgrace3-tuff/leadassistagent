@@ -7,6 +7,13 @@ const DEFAULT_SETTINGS = {
   apiBaseUrl: "http://localhost:3000/api",
   apiKey: "",
   itemsPath: "/items",
+  // Bulk import endpoints (one POST request per row is sent to these paths).
+  usersPath: "/users",
+  statusPath: "/lead-statuses",
+  // Field name the selected status is written to on each client-status row.
+  statusField: "status",
+  // Options offered in the Client Status picker (comma-separated in settings).
+  statusOptions: "New, Reapply",
 };
 
 export async function getSettings() {

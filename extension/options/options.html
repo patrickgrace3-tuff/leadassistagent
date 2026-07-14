@@ -22,6 +22,20 @@
     <label for="items-path">Items endpoint path</label>
     <input id="items-path" type="text" placeholder="/items" />
 
+    <h2>Bulk import</h2>
+
+    <label for="users-path">Users endpoint path <span class="muted">(bulk add users → POST per row)</span></label>
+    <input id="users-path" type="text" placeholder="/users" />
+
+    <label for="status-path">Client status endpoint path <span class="muted">(bulk statuses → POST per row)</span></label>
+    <input id="status-path" type="text" placeholder="/lead-statuses" />
+
+    <label for="status-field">Status field name <span class="muted">(the key the picked status is sent as)</span></label>
+    <input id="status-field" type="text" placeholder="status" />
+
+    <label for="status-options">Status options <span class="muted">(comma-separated, shown in the picker)</span></label>
+    <input id="status-options" type="text" placeholder="New, Reapply" />
+
     <div class="row">
       <button id="save">Save</button>
       <button id="test">Save &amp; test connection</button>
