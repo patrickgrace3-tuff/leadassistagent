@@ -2,7 +2,7 @@
 // background service worker; this file only sends messages and renders results.
 
 import { getSettings } from "../lib/api-client.js";
-import { parseTable, buildBody } from "../lib/csv.js";
+import { parseTable, buildBody, toCSV } from "../lib/csv.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -99,6 +99,7 @@ async function runImport(rows, path, progressEl, resultEl, noun) {
 
   let ok = 0;
   const errors = [];
+  const failedRows = [];
 
   for (let i = 0; i < rows.length; i++) {
     const body = buildBody(rows[i]);
@@ -107,6 +108,7 @@ async function runImport(rows, path, progressEl, resultEl, noun) {
       ok++;
     } catch (err) {
       errors.push({ row: i + 2, error: err.message }); // +2: header row + 1-index
+      failedRows.push({ ...rows[i], _error: err.message });
     }
     bar.style.width = `${Math.round(((i + 1) / rows.length) * 100)}%`;
   }
@@ -124,6 +126,18 @@ async function runImport(rows, path, progressEl, resultEl, noun) {
     resultEl.appendChild(p);
   });
   log(`Import complete: ${ok} ok, ${failed} failed (${path}).`);
+  return { ok, failed, failedRows };
+}
+
+// Trigger a client-side download of the given CSV text.
+function downloadCSV(filename, csv) {
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 // Wire up one bulk tab. `getPath` returns the endpoint for this run; `validate`
@@ -136,8 +150,10 @@ function setupBulkTab({ prefix, getPath, noun, validate }) {
   const importBtn = $(`${prefix}-import`);
   const progressEl = $(`${prefix}-progress`);
   const resultEl = $(`${prefix}-result`);
+  const downloadBtn = $(`${prefix}-download`);
 
   let parsed = { headers: [], rows: [] };
+  let lastFailed = null; // { headers, rows } of the most recent failed rows
 
   fileInput.addEventListener("change", async () => {
     const file = fileInput.files[0];
@@ -150,6 +166,12 @@ function setupBulkTab({ prefix, getPath, noun, validate }) {
     parsed = parseTable(pasteBox.value);
     renderPreview(previewEl, parsed.headers, parsed.rows);
     importBtn.disabled = parsed.rows.length === 0;
+    downloadBtn.classList.add("hidden");
+  });
+
+  downloadBtn.addEventListener("click", () => {
+    if (!lastFailed) return;
+    downloadCSV(`${prefix}-failed-rows.csv`, toCSV(lastFailed.rows, lastFailed.headers));
   });
 
   importBtn.addEventListener("click", async () => {
@@ -160,11 +182,19 @@ function setupBulkTab({ prefix, getPath, noun, validate }) {
       return;
     }
     importBtn.disabled = true;
+    downloadBtn.classList.add("hidden");
     progressEl.classList.remove("hidden");
     progressEl.firstElementChild.style.width = "0%";
     try {
       const path = await getPath();
-      await runImport(parsed.rows, path, progressEl, resultEl, noun);
+      const result = await runImport(parsed.rows, path, progressEl, resultEl, noun);
+      if (result.failedRows.length > 0) {
+        lastFailed = {
+          headers: [...parsed.headers, "_error"],
+          rows: result.failedRows,
+        };
+        downloadBtn.classList.remove("hidden");
+      }
     } catch (err) {
       resultEl.innerHTML = `<p class="warn">Import failed: ${err.message}</p>`;
       log(`Import failed: ${err.message}`);

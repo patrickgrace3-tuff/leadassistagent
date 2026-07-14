@@ -20,31 +20,59 @@ directly in developer mode.
 After pulling new changes, click the **↻ reload** button on the extension's
 card in `chrome://extensions`.
 
+## Set your identity token (do this first)
+
+Every teammate needs their own token, and it must **not** be committed. Keep it
+in a local, gitignored file:
+
+```bash
+cd extension
+cp config.example.js config.local.js   # then edit config.local.js
+```
+
+Put your token in `config.local.js`:
+
+```js
+export default {
+  identityToken: "your-personal-access-token",
+};
+```
+
+The token is a Passport token from the ConversionIA Identity Server: create a
+service account at
+[admin.conversionext.com](https://admin.conversionext.com/admin/resources/service-accounts),
+assign the super-admin role, then use the **Create Personal Access Token**
+action. It is sent as the `X-Conversion-Identity-Token` header (this API does
+**not** use `Authorization: Bearer`). Reload the extension after editing the file.
+
+> `config.local.js` is in `.gitignore`, so your token stays on your machine.
+> The Settings page also has a token field if you'd rather not use the file — a
+> value entered there overrides the file.
+
 ## Configure the API
 
 1. Click **⚙ Settings** in the side panel (or right-click the icon → Options).
-2. Set:
-   - **API base URL** — `https://leadassist.ai/api`.
-   - **Identity token** — sent as the `X-Conversion-Identity-Token` header. This
-     is a Passport token from the ConversionIA Identity Server: create a service
-     account at [admin.conversionext.com](https://admin.conversionext.com/admin/resources/service-accounts),
-     assign the super-admin role, then use the **Create Personal Access Token**
-     action. (This API does **not** use `Authorization: Bearer`.)
+2. Confirm:
+   - **API base URL** — `https://leadassist.ai/api/v1` (endpoint paths are
+     appended to this).
    - **Users / Client status endpoint paths** — defaults `/users` and
      `/clients/{client}/statuses`; `{client}` is filled from the Client ID you
      enter in the Client Status tab.
 3. Click **Save & test connection**.
 
-Settings are stored via `chrome.storage.sync`, so they follow each teammate's
-Chrome profile.
+Non-secret settings are stored via `chrome.storage.sync` (they follow your
+Chrome profile); the token lives in `config.local.js`.
 
 ## What it can do today
 
 - **Bulk add users** — upload a `.csv` or paste rows (copy straight from Excel /
-  Sheets), preview them, then send one `POST` per row to your users endpoint
-  with a live progress bar and per-row success/failure report.
-- **Bulk client statuses** — apply a status (New, Reapply, …) to many leads at
-  once. Pick the status from a configurable list; each row identifies a lead.
+  Sheets), preview them, then send one `POST /users` per row with a live
+  progress bar and per-row success/failure report.
+- **Bulk client statuses** — create statuses (New, Reapply, Qualified, …) for a
+  client. Enter the Client ID and one row per status; each is sent to
+  `POST /clients/{client}/statuses`.
+- **Download failed rows** — after any bulk import, export just the rows that
+  failed (with an `_error` column) as a CSV, so you can fix and re-run them.
 - **Read current page** — pulls title, URL, current text selection, headings,
   and any emails/phone numbers found on the page.
 - **Create item from this page** — POSTs the captured page context to the API.

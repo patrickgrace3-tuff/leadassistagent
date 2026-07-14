@@ -1,12 +1,13 @@
 // Thin client for the Lead Assist system API.
 // All requests are made from the background service worker so host_permissions
-// (not the page's CORS policy) govern access. Configure the base URL and API
-// key on the extension's options page.
+// (not the page's CORS policy) govern access. Configure the base URL on the
+// options page; the identity token lives in the gitignored config.local.js.
 
 const DEFAULT_SETTINGS = {
-  apiBaseUrl: "https://leadassist.ai/api",
+  apiBaseUrl: "https://leadassist.ai/api/v1",
   // Sent as the X-Conversion-Identity-Token header (Passport token from the
   // ConversionIA Identity Server). NOT an Authorization: Bearer header.
+  // Prefer setting this in config.local.js so it is never committed.
   identityToken: "",
   itemsPath: "/items",
   // Bulk import endpoints (one POST request per row is sent to these paths).
@@ -15,13 +16,40 @@ const DEFAULT_SETTINGS = {
   statusPath: "/clients/{client}/statuses",
 };
 
+// Optional local overrides from config.local.js (gitignored). This is the
+// recommended home for the identity token: copy config.example.js to
+// config.local.js and fill it in. Missing file is fine — we fall back to
+// options-page settings.
+let localConfigPromise;
+function getLocalConfig() {
+  if (!localConfigPromise) {
+    localConfigPromise = import("../config.local.js")
+      .then((m) => m.default ?? {})
+      .catch(() => ({}));
+  }
+  return localConfigPromise;
+}
+
 export async function getSettings() {
-  const stored = await chrome.storage.sync.get(DEFAULT_SETTINGS);
-  return { ...DEFAULT_SETTINGS, ...stored };
+  const [local, stored] = await Promise.all([
+    getLocalConfig(),
+    chrome.storage.sync.get(null), // only keys the user explicitly saved
+  ]);
+  // Precedence: built-in defaults < config.local.js < options-page settings.
+  const merged = { ...DEFAULT_SETTINGS, ...local, ...stored };
+  // An empty stored token must not blank out a token set in config.local.js.
+  if (!merged.identityToken && local.identityToken) {
+    merged.identityToken = local.identityToken;
+  }
+  return merged;
 }
 
 export async function saveSettings(settings) {
   await chrome.storage.sync.set(settings);
+}
+
+export async function removeSetting(key) {
+  await chrome.storage.sync.remove(key);
 }
 
 async function request(method, path, body) {

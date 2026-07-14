@@ -2,3 +2,6 @@
 node_modules/
 *.log
 *.zip
+
+# Per-machine token / overrides — never commit
+extension/config.local.js

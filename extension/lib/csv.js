@@ -80,6 +80,20 @@ export function buildBody(row) {
   return body;
 }
 
+// Serialize rows back to CSV text (used to export failed rows for retry).
+// `headers` fixes the column order; each row is looked up by header key.
+export function toCSV(rows, headers) {
+  const esc = (v) => {
+    const s = v == null ? "" : String(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const lines = [headers.map(esc).join(",")];
+  for (const row of rows) {
+    lines.push(headers.map((h) => esc(row[h])).join(","));
+  }
+  return lines.join("\n");
+}
+
 function parseDelimited(text, delimiter) {
   const rows = [];
   let row = [];
