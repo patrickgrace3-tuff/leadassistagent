@@ -14,6 +14,10 @@ const DEFAULT_SETTINGS = {
   usersPath: "/users",
   // {client} is replaced by the Client ID entered in the Client Status tab.
   statusPath: "/clients/{client}/statuses",
+  // Chat tab: Anthropic API key (sent to api.anthropic.com, NOT to Lead Assist).
+  // Prefer setting this in config.local.json so it is never committed.
+  anthropicApiKey: "",
+  chatModel: "claude-opus-4-8",
 };
 
 // Optional local overrides from config.local.json (gitignored). This is the
@@ -41,9 +45,12 @@ export async function getSettings() {
   ]);
   // Precedence: built-in defaults < config.local.json < options-page settings.
   const merged = { ...DEFAULT_SETTINGS, ...local, ...stored };
-  // An empty stored token must not blank out a token set in config.local.json.
+  // An empty stored secret must not blank out one set in config.local.json.
   if (!merged.identityToken && local.identityToken) {
     merged.identityToken = local.identityToken;
+  }
+  if (!merged.anthropicApiKey && local.anthropicApiKey) {
+    merged.anthropicApiKey = local.anthropicApiKey;
   }
   return merged;
 }
@@ -122,6 +129,17 @@ export async function listItems() {
 export async function createItem(item) {
   const { itemsPath } = await getSettings();
   return api.post(itemsPath, item);
+}
+
+export async function createUser(user) {
+  const { usersPath } = await getSettings();
+  return api.post(usersPath, user);
+}
+
+export async function createClientStatus(clientId, status) {
+  const { statusPath } = await getSettings();
+  const path = statusPath.replace("{client}", encodeURIComponent(clientId));
+  return api.post(path, status);
 }
 
 export async function testConnection() {

@@ -36,6 +36,16 @@
     <label for="status-path">Client status endpoint path <span class="muted">({client} is replaced by the Client ID)</span></label>
     <input id="status-path" type="text" placeholder="/clients/{client}/statuses" />
 
+    <h2>Chat assistant</h2>
+
+    <label for="anthropic-key">Anthropic API key <span class="muted">(powers the Chat tab)</span></label>
+    <input id="anthropic-key" type="password" placeholder="Recommended: set in config.local.json instead" />
+    <p class="muted" style="margin-top:4px;font-size:12px;">
+      Used only for the Chat tab; sent to <code>api.anthropic.com</code>, never to
+      Lead Assist. Like the identity token, prefer putting it in
+      <code>config.local.json</code> so it isn't committed.
+    </p>
+
     <div class="row">
       <button id="save">Save</button>
       <button id="test">Save &amp; test connection</button>

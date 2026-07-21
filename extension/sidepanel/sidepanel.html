@@ -18,13 +18,31 @@
   </section>
 
   <nav class="tabs">
-    <button class="tab active" data-tab="users">Bulk Users</button>
+    <button class="tab active" data-tab="chat">Chat</button>
+    <button class="tab" data-tab="users">Bulk Users</button>
     <button class="tab" data-tab="status">Client Status</button>
     <button class="tab" data-tab="page">Page</button>
   </nav>
 
+  <!-- ── Chat ───────────────────────────────────────────────── -->
+  <div class="tab-panel active" data-panel="chat">
+    <section class="card chat-card">
+      <div id="chat-messages" class="chat-messages">
+        <p class="muted chat-empty">
+          Ask me to add a user or a client status and I'll call the Lead Assist
+          API for you. e.g. <em>“Add a user Ann Lee, ann@x.com, role agent”</em>
+          or <em>“Add a New status to client 45”</em>.
+        </p>
+      </div>
+      <div class="chat-input-row">
+        <textarea id="chat-input" rows="2" placeholder="Message…"></textarea>
+        <button id="chat-send">Send</button>
+      </div>
+    </section>
+  </div>
+
   <!-- ── Bulk Users ─────────────────────────────────────────── -->
-  <div class="tab-panel active" data-panel="users">
+  <div class="tab-panel" data-panel="users">
     <section class="card">
       <h2>Bulk add users</h2>
       <p class="muted">
