@@ -27,16 +27,22 @@ in a local, gitignored file:
 
 ```bash
 cd extension
-cp config.example.js config.local.js   # then edit config.local.js
+cp config.example.json config.local.json   # then edit config.local.json
 ```
 
-Put your token in `config.local.js`:
+Put your token in `config.local.json`:
 
-```js
-export default {
-  identityToken: "your-personal-access-token",
-};
+```json
+{
+  "identityToken": "your-personal-access-token",
+  "anthropicApiKey": "your-anthropic-api-key"
+}
 ```
+
+`anthropicApiKey` powers the **Chat** tab (see below) and is optional — leave it
+out if you don't use Chat. It's sent only to `api.anthropic.com`, never to Lead
+Assist. You can also add `"apiBaseUrl": "https://leadassist.ai/api/v1"` to
+override the base URL for this machine.
 
 The token is a Passport token from the ConversionIA Identity Server: create a
 service account at
@@ -45,7 +51,7 @@ assign the super-admin role, then use the **Create Personal Access Token**
 action. It is sent as the `X-Conversion-Identity-Token` header (this API does
 **not** use `Authorization: Bearer`). Reload the extension after editing the file.
 
-> `config.local.js` is in `.gitignore`, so your token stays on your machine.
+> `config.local.json` is in `.gitignore`, so your token stays on your machine.
 > The Settings page also has a token field if you'd rather not use the file — a
 > value entered there overrides the file.
 
@@ -61,10 +67,14 @@ action. It is sent as the `X-Conversion-Identity-Token` header (this API does
 3. Click **Save & test connection**.
 
 Non-secret settings are stored via `chrome.storage.sync` (they follow your
-Chrome profile); the token lives in `config.local.js`.
+Chrome profile); the token lives in `config.local.json`.
 
 ## What it can do today
 
+- **Chat** — a conversational assistant (powered by Claude) that understands
+  requests like “add a user Ann Lee, ann@x.com, role agent” or “add a New status
+  to client 45”, asks for anything required that's missing, and calls the Lead
+  Assist API to carry it out. See [Chat assistant](#chat-assistant) below.
 - **Bulk add users** — upload a `.csv` or paste rows (copy straight from Excel /
   Sheets), preview them, then send one `POST /users` per row with a live
   progress bar and per-row success/failure report.
@@ -80,6 +90,23 @@ Chrome profile); the token lives in `config.local.js`.
 - **Highlight** — outlines elements on the active page matching a CSS selector.
 - **Fill on page** — writes a value into an input/textarea on the active page
   (dispatches `input`/`change` events so React-style forms notice).
+
+### Chat assistant
+
+The **Chat** tab lets teammates work in natural language. Type a request; the
+assistant interprets it, gathers any required details, and calls the same
+endpoints as the bulk tools:
+
+- “Create a user named Bo Ray, bo@example.com, phone +16155550123, role manager”
+- “Add statuses New and Reapply to client 298”
+
+Under the hood it uses the Claude API (`claude-opus-4-8`) with tool use: Claude
+decides when to call `create_user` / `create_client_status`, the service worker
+executes those against the Lead Assist API, and the result is fed back so Claude
+can confirm what happened. It needs an **Anthropic API key** — set
+`anthropicApiKey` in `config.local.json` (preferred) or on the Settings page.
+Requests go to `api.anthropic.com`; only the tool calls Claude chooses hit Lead
+Assist.
 
 ### Bulk import format
 

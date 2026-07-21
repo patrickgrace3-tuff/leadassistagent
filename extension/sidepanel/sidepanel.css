@@ -97,6 +97,45 @@ button.link {
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
 
+/* Chat */
+.chat-card { display: flex; flex-direction: column; }
+.chat-messages {
+  min-height: 200px;
+  max-height: 55vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 2px;
+}
+.chat-empty { font-size: 12px; }
+.chat-msg {
+  padding: 6px 10px;
+  border-radius: 10px;
+  max-width: 85%;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 13px;
+}
+.chat-msg.user {
+  align-self: flex-end;
+  background: var(--accent);
+  color: #fff;
+}
+.chat-msg.assistant {
+  align-self: flex-start;
+  border: 1px solid var(--border);
+}
+.chat-msg.pending { color: var(--muted); }
+.chat-input-row {
+  display: flex;
+  gap: 6px;
+  align-items: flex-end;
+  margin-top: 8px;
+}
+.chat-input-row textarea { margin: 0; }
+.chat-input-row button { flex-shrink: 0; }
+
 textarea {
   font: inherit;
   width: 100%;

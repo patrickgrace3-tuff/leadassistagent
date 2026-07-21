@@ -18,9 +18,9 @@
     <input id="api-base-url" type="url" placeholder="https://leadassist.ai/api/v1" />
 
     <label for="identity-token">Identity token <span class="muted">(X-Conversion-Identity-Token)</span></label>
-    <input id="identity-token" type="password" placeholder="Recommended: set in config.local.js instead" />
+    <input id="identity-token" type="password" placeholder="Recommended: set in config.local.json instead" />
     <p class="muted" style="margin-top:4px;font-size:12px;">
-      Preferred: copy <code>config.example.js</code> → <code>config.local.js</code>
+      Preferred: copy <code>config.example.json</code> → <code>config.local.json</code>
       (gitignored) and put your token there so it is never committed. A value
       typed here overrides the file.
     </p>
@@ -35,6 +35,16 @@
 
     <label for="status-path">Client status endpoint path <span class="muted">({client} is replaced by the Client ID)</span></label>
     <input id="status-path" type="text" placeholder="/clients/{client}/statuses" />
+
+    <h2>Chat assistant</h2>
+
+    <label for="anthropic-key">Anthropic API key <span class="muted">(powers the Chat tab)</span></label>
+    <input id="anthropic-key" type="password" placeholder="Recommended: set in config.local.json instead" />
+    <p class="muted" style="margin-top:4px;font-size:12px;">
+      Used only for the Chat tab; sent to <code>api.anthropic.com</code>, never to
+      Lead Assist. Like the identity token, prefer putting it in
+      <code>config.local.json</code> so it isn't committed.
+    </p>
 
     <div class="row">
       <button id="save">Save</button>

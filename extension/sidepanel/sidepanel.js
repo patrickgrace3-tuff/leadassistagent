@@ -57,6 +57,75 @@ $("test-connection").addEventListener("click", async () => {
 
 $("open-options").addEventListener("click", () => chrome.runtime.openOptionsPage());
 
+// --- Chat (AI assistant) ---
+
+// Full Anthropic-format conversation. Tool-use / tool-result turns are kept for
+// context but not rendered; only user strings and assistant text are shown.
+let chatHistory = [];
+
+function addChatBubble(role, text) {
+  const empty = $("chat-messages").querySelector(".chat-empty");
+  if (empty) empty.remove();
+  const div = document.createElement("div");
+  div.className = `chat-msg ${role}`;
+  div.textContent = text;
+  $("chat-messages").appendChild(div);
+  $("chat-messages").scrollTop = $("chat-messages").scrollHeight;
+  return div;
+}
+
+function renderChat() {
+  const el = $("chat-messages");
+  el.textContent = "";
+  for (const m of chatHistory) {
+    if (m.role === "user" && typeof m.content === "string") {
+      addChatBubble("user", m.content);
+    } else if (m.role === "assistant") {
+      const text = (Array.isArray(m.content) ? m.content : [])
+        .filter((b) => b.type === "text")
+        .map((b) => b.text)
+        .join("")
+        .trim();
+      if (text) addChatBubble("assistant", text);
+    }
+    // tool_result user turns (array content) and tool_use blocks are skipped
+  }
+}
+
+async function sendChat() {
+  const input = $("chat-input");
+  const text = input.value.trim();
+  if (!text) return;
+
+  chatHistory.push({ role: "user", content: text });
+  renderChat();
+  input.value = "";
+
+  const pending = addChatBubble("assistant pending", "…");
+  $("chat-send").disabled = true;
+  try {
+    const data = await send({ type: "chat:send", messages: chatHistory });
+    chatHistory = data.messages;
+    renderChat();
+    // A create may have changed the items list; refresh it quietly.
+    refreshItems().catch(() => {});
+  } catch (err) {
+    pending.classList.remove("pending");
+    pending.textContent = `Error: ${err.message}`;
+    log(`Chat failed: ${err.message}`);
+  } finally {
+    $("chat-send").disabled = false;
+  }
+}
+
+$("chat-send").addEventListener("click", sendChat);
+$("chat-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    sendChat();
+  }
+});
+
 // --- Bulk import engine (shared by Users and Client Status tabs) ---
 
 function renderPreview(el, headers, rows) {
@@ -179,6 +248,16 @@ function setupBulkTab({ prefix, getPath, noun, validate }) {
     const problem = validate ? validate() : null;
     if (problem) {
       resultEl.innerHTML = `<p class="warn">${problem}</p>`;
+      return;
+    }
+    // Fail fast if there's no token, rather than firing N tokenless requests
+    // that each come back 401 "Missing X-Conversion-Identity-Token".
+    const { identityToken } = await getSettings();
+    if (!identityToken) {
+      resultEl.innerHTML =
+        '<p class="warn">No identity token found. Add it in ⚙ Settings, or in ' +
+        "<code>extension/config.local.json</code>, then reload the extension at " +
+        "chrome://extensions.</p>";
       return;
     }
     importBtn.disabled = true;

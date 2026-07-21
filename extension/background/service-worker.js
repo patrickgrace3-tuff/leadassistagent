@@ -2,6 +2,7 @@
 // scripts, and the Lead Assist system API.
 
 import { api, listItems, createItem, testConnection } from "../lib/api-client.js";
+import { runChat } from "../lib/chat-agent.js";
 
 // Clicking the toolbar icon opens the side panel for the current tab.
 chrome.runtime.onInstalled.addListener(() => {
@@ -24,6 +25,10 @@ const handlers = {
   "api:createItem": ({ item }) => createItem(item),
 
   "api:testConnection": () => testConnection(),
+
+  // Conversational agent: runs the Claude tool-use loop and executes any tool
+  // calls against the system API. { messages } is the full conversation.
+  "chat:send": ({ messages }) => runChat(messages),
 
   // Ask the content script in the active tab for its page context.
   "page:read": async () => {
